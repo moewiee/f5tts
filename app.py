@@ -210,6 +210,7 @@ def split_text_into_batches(text, max_chars=200, split_words=SPLIT_WORDS):
     
     return batches
 
+@spaces.GPU
 def infer_batch(ref_audio, ref_text, gen_text_batches, exp_name, remove_silence, progress=gr.Progress()):
     if exp_name == "F5-TTS":
         ema_model = F5TTS_ema_model
@@ -294,6 +295,7 @@ def infer_batch(ref_audio, ref_text, gen_text_batches, exp_name, remove_silence,
 
     return (target_sample_rate, final_wave), spectrogram_path
 
+@spaces.GPU
 def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, custom_split_words=''):
     if not custom_split_words.strip():
         custom_words = [word.strip() for word in custom_split_words.split(',')]
@@ -342,7 +344,8 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, custom_s
     
     gr.Info(f"Generating audio using {exp_name} in {len(gen_text_batches)} batches")
     return infer_batch((audio, sr), ref_text, gen_text_batches, exp_name, remove_silence)
-    
+
+@spaces.GPU
 def generate_podcast(script, speaker1_name, ref_audio1, ref_text1, speaker2_name, ref_audio2, ref_text2, exp_name, remove_silence):
     # Split the script into speaker blocks
     speaker_pattern = re.compile(f"^({re.escape(speaker1_name)}|{re.escape(speaker2_name)}):", re.MULTILINE)
@@ -678,7 +681,8 @@ with gr.Blocks() as app_emotional:
 
     # Output audio
     audio_output_emotional = gr.Audio(label="Synthesized Audio")
-
+    
+    @spaces.GPU
     def generate_emotional_speech(
         regular_audio,
         regular_ref_text,
@@ -801,24 +805,4 @@ If you're having issues, try converting your reference audio to WAV or MP3, clip
     )
     gr.TabbedInterface([app_tts, app_podcast, app_emotional, app_credits], ["TTS", "Podcast", "Multi-Style", "Credits"])
 
-@click.command()
-@click.option("--port", "-p", default=None, type=int, help="Port to run the app on")
-@click.option("--host", "-H", default=None, help="Host to run the app on")
-@click.option(
-    "--share",
-    "-s",
-    default=False,
-    is_flag=True,
-    help="Share the app via Gradio share link",
-)
-@click.option("--api", "-a", default=True, is_flag=True, help="Allow API access")
-def main(port, host, share, api):
-    global app
-    print(f"Starting app...")
-    app.queue(api_open=api).launch(
-        server_name=host, server_port=port, share=share, show_api=api
-    )
-
-
-if __name__ == "__main__":
-    main()
+app.queue().launch()
