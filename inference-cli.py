@@ -11,7 +11,6 @@ import torch
 import torchaudio
 import tqdm
 from cached_path import cached_path
-from einops import rearrange
 from pydub import AudioSegment, silence
 from transformers import pipeline
 from vocos import Vocos
@@ -274,7 +273,7 @@ def infer_batch(ref_audio, ref_text, gen_text_batches, model, remove_silence, cr
 
         generated = generated.to(torch.float32)
         generated = generated[:, ref_audio_len:, :]
-        generated_mel_spec = rearrange(generated, "1 n d -> 1 d n")
+        generated_mel_spec = generated.permute(0, 2, 1)
         generated_wave = vocos.decode(generated_mel_spec.cpu())
         if rms < target_rms:
             generated_wave = generated_wave * rms / target_rms
