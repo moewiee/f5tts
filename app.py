@@ -405,7 +405,7 @@ with gr.Blocks() as app_multistyle:
 
             # Generate speech for this segment
             audio, _ = infer(
-                ref_audio, ref_text, text, model_choice, remove_silence, 0, show_info=print
+                ref_audio, ref_text, text, model_choice, remove_silence, 0
             )  # show_info=print no pull to top when generating
             sr, audio_data = audio
 
