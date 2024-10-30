@@ -80,7 +80,7 @@ def generate_response(messages, model, tokenizer):
 
 @gpu_decorator
 def infer(
-    ref_audio_orig, ref_text, gen_text, model, remove_silence, cross_fade_duration=0.15, speed=1, show_info=gr.Info
+    ref_audio_orig, ref_text, gen_text, model, remove_silence, cross_fade_duration=0.15, speed=1
 ):
     ref_audio, ref_text = preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=show_info)
 
@@ -97,7 +97,6 @@ def infer(
         vocoder,
         cross_fade_duration=cross_fade_duration,
         speed=speed,
-        show_info=show_info,
         progress=gr.Progress(),
     )
 
