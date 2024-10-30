@@ -22,4 +22,4 @@ transformers
 vocos
 wandb
 x_transformers>=1.31.14
-git+https://github.com/SWivid/F5-TTS.git
+git+https://huggingface.co/spaces/mrfakename/E2-F5-TTS
