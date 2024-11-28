@@ -1,6 +1,11 @@
 from model import CFM, UNetT, DiT, Trainer
-from model.utils import get_tokenizer
+from model.utils_infer import load_model
+from model.utils import get_tokenizer, load_checkpoint
 from model.dataset import load_dataset
+import shutil
+from cached_path import cached_path
+import os
+
 
 
 # -------------------------- Dataset Settings --------------------------- #
@@ -15,11 +20,12 @@ dataset_name = "Emilia_ZH_EN"
 
 # -------------------------- Training Settings -------------------------- #
 
+finetune=True
 exp_name = "F5TTS_Base"  # F5TTS_Base | E2TTS_Base
 
 learning_rate = 7.5e-5
 
-batch_size_per_gpu = 38400  # 8 GPUs, 8 * 38400 = 307200
+batch_size_per_gpu = 28800  # 8 GPUs, 8 * 38400 = 307200
 batch_size_type = "frame"  # "frame" or "sample"
 max_samples = 64  # max sequences per batch if use frame-wise batch_size. we set 32 for small models, 64 for base models
 grad_accumulation_steps = 1  # note: updates = steps / grad_accumulation_steps
@@ -35,10 +41,12 @@ if exp_name == "F5TTS_Base":
     wandb_resume_id = None
     model_cls = DiT
     model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
+    ckpt_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))
 elif exp_name == "E2TTS_Base":
     wandb_resume_id = None
     model_cls = UNetT
     model_cfg = dict(dim=1024, depth=24, heads=16, ff_mult=4)
+    ckpt_path = str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_1200000.safetensors"))
 
 
 # ----------------------------------------------------------------------- #
@@ -63,13 +71,18 @@ def main():
         vocab_char_map=vocab_char_map,
     )
 
+    checkpoint_path = f"ckpts/{exp_name}"
+
+    model = load_checkpoint(model, ckpt_path, 'cpu', use_ema=True)
+
     trainer = Trainer(
         model,
         epochs,
         learning_rate,
+        logger='tensorboard',
         num_warmup_updates=num_warmup_updates,
         save_per_updates=save_per_updates,
-        checkpoint_path=f"ckpts/{exp_name}",
+        checkpoint_path=checkpoint_path,
         batch_size=batch_size_per_gpu,
         batch_size_type=batch_size_type,
         max_samples=max_samples,
@@ -80,10 +93,10 @@ def main():
         wandb_resume_id=wandb_resume_id,
         last_per_steps=last_per_steps,
     )
-
-    train_dataset = load_dataset(dataset_name, tokenizer, mel_spec_kwargs=mel_spec_kwargs)
+    train_dataset = load_dataset('emilia_s3_english_reduced', tokenizer, mel_spec_kwargs=mel_spec_kwargs)
     trainer.train(
         train_dataset,
+        num_workers=16,
         resumable_with_seed=666,  # seed for shuffling dataset
     )
 

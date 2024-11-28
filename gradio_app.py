@@ -68,18 +68,23 @@ target_sample_rate = 24000
 n_mel_channels = 100
 hop_length = 256
 target_rms = 0.1
-nfe_step = 32  # 16, 32
+nfe_step = 64  # 16, 32
 cfg_strength = 2.0
 ode_method = "euler"
 sway_sampling_coef = -1.0
 speed = 1.0
-# fix_duration = 27  # None or float (duration in seconds)
 fix_duration = None
 
 
 def load_model(repo_name, exp_name, model_cls, model_cfg, ckpt_step):
-    ckpt_path = str(cached_path(f"hf://SWivid/{repo_name}/{exp_name}/model_{ckpt_step}.safetensors"))
-    # ckpt_path = f"ckpts/{exp_name}/model_{ckpt_step}.pt"  # .pt | .safetensors
+    if ckpt_step == 0:
+        ckpt_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))
+    elif ckpt_step < 0:
+        ckpt_path = f"ckpts/{exp_name}/model_last.pt"
+    else:
+        ckpt_path = f"ckpts/{exp_name}/model_{ckpt_step}.pt"
+
+
     vocab_char_map, vocab_size = get_tokenizer("Emilia_ZH_EN", "pinyin")
     model = CFM(
         transformer=model_cls(
@@ -108,10 +113,13 @@ F5TTS_model_cfg = dict(
 E2TTS_model_cfg = dict(dim=1024, depth=24, heads=16, ff_mult=4)
 
 F5TTS_ema_model = load_model(
-    "F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, 1200000
+    "F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, -1
 )
+# E2TTS_ema_model = load_model(
+#     "E2-TTS", "E2TTS_Base", UNetT, E2TTS_model_cfg, 1200000
+# )
 E2TTS_ema_model = load_model(
-    "E2-TTS", "E2TTS_Base", UNetT, E2TTS_model_cfg, 1200000
+    "F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, 0
 )
 
 def split_text_into_batches(text, max_chars=200, split_words=SPLIT_WORDS):
@@ -258,7 +266,7 @@ def infer_batch(ref_audio, ref_text, gen_text_batches, exp_name, remove_silence,
 
         generated = generated[:, ref_audio_len:, :]
         generated_mel_spec = rearrange(generated, "1 n d -> 1 d n")
-        generated_wave = vocos.decode(generated_mel_spec.cpu())
+        generated_wave = vocos.decode(generated_mel_spec.cpu().float())
         if rms < target_rms:
             generated_wave = generated_wave * rms / target_rms
 
@@ -435,7 +443,7 @@ with gr.Blocks() as app_tts:
         choices=["F5-TTS", "E2-TTS"], label="Choose TTS Model", value="F5-TTS"
     )
     generate_btn = gr.Button("Synthesize", variant="primary")
-    with gr.Accordion("Advanced Settings", open=False):
+    with gr.Accordion("Advanced Settings", open=True):
         ref_text_input = gr.Textbox(
             label="Reference Text",
             info="Leave blank to automatically transcribe the reference audio. If you enter text it will override automatic transcription.",

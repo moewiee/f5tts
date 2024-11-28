@@ -1,12 +1,14 @@
 import json
 import random
 from tqdm import tqdm
+import os
 
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, Sampler
 import torchaudio
 from datasets import load_from_disk
+from datasets import load_dataset as load_hf_dataset
 from datasets import Dataset as Dataset_
 from torch import nn
 
@@ -80,12 +82,20 @@ class CustomDataset(Dataset):
         n_mel_channels=100,
         preprocessed_mel=False,
         mel_spec_module: nn.Module | None = None,
+        text_dir: str | None = None,
+        folder_dict: dict | None = None,
     ):
         self.data = custom_dataset
         self.durations = durations
         self.target_sample_rate = target_sample_rate
         self.hop_length = hop_length
         self.preprocessed_mel = preprocessed_mel
+        self.text_dir = text_dir
+        self.folder_dict = folder_dict
+
+        # Reverse keys and values of folder_dict
+        loaded_dict = json.load(open(self.folder_dict, "r"))
+        self.folder_dict = {v: k for k, v in loaded_dict.items()}
 
         if not preprocessed_mel:
             self.mel_spectrogram = default(
@@ -108,33 +118,51 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
-        row = self.data[index]
-        audio_path = row["audio_path"]
-        text = row["text"]
-        duration = row["duration"]
+        while True:
+            row = self.data[index]
+            if self.text_dir is not None and self.folder_dict is not None:
+                row = row["text"]
+                path = row.split("|")[0]
+                duration = float(row.split("|")[1])
+                dirname = os.path.dirname(path)
+                basename = os.path.basename(path)
+                audio_path = os.path.join(self.folder_dict[dirname], basename)
+                text = open(os.path.join(self.text_dir, dirname, os.path.splitext(basename)[0] + ".txt")).read().strip()
+                text = text.split("|")
+
+            else:
+                audio_path = row["audio_path"]
+                text = row["text"]
+                duration = row["duration"]
+
+            # filter by given length
+            if 0.3 <= duration <= 30:
+                break  # valid
+
+            index = (index + 1) % len(self.data)
 
         if self.preprocessed_mel:
             mel_spec = torch.tensor(row["mel_spec"])
-
         else:
             audio, source_sample_rate = torchaudio.load(audio_path)
+
+            # make sure mono input
             if audio.shape[0] > 1:
                 audio = torch.mean(audio, dim=0, keepdim=True)
 
-            if duration > 30 or duration < 0.3:
-                return self.__getitem__((index + 1) % len(self.data))
-
+            # resample if necessary
             if source_sample_rate != self.target_sample_rate:
                 resampler = torchaudio.transforms.Resample(source_sample_rate, self.target_sample_rate)
                 audio = resampler(audio)
 
+            # to mel spectrogram
             mel_spec = self.mel_spectrogram(audio)
-            mel_spec = mel_spec.squeeze(0)  # '1 d t -> d t')
+            mel_spec = mel_spec.squeeze(0)  # '1 d t -> d t'
 
-        return dict(
-            mel_spec=mel_spec,
-            text=text,
-        )
+        return {
+            "mel_spec": mel_spec,
+            "text": text,
+        }
 
 
 # Dynamic Batch Sampler
@@ -220,12 +248,23 @@ def load_dataset(
 
     print("Loading dataset ...")
 
+    load_from_text = False
+    text_dir = None
+    folder_dict = None
     if dataset_type == "CustomDataset":
         if audio_type == "raw":
-            try:
-                train_dataset = load_from_disk(f"data/{dataset_name}_{tokenizer}/raw")
-            except:  # noqa: E722
-                train_dataset = Dataset_.from_file(f"data/{dataset_name}_{tokenizer}/raw.arrow")
+            if os.path.exists(f"data/{dataset_name}_{tokenizer}/filelist.txt"):
+                train_dataset = load_hf_dataset("text", data_files=f"data/{dataset_name}_{tokenizer}/filelist.txt")
+                # Assign train split to train_dataset
+                train_dataset = train_dataset["train"]
+                load_from_text = True
+                text_dir = f"data/{dataset_name}_{tokenizer}/text"
+                folder_dict = f"data/{dataset_name}_{tokenizer}/folder_dict.json"
+            else:
+                try:
+                    train_dataset = load_from_disk(f"data/{dataset_name}_{tokenizer}/raw")
+                except:  # noqa: E722
+                    train_dataset = Dataset_.from_file(f"data/{dataset_name}_{tokenizer}/raw.arrow")
             preprocessed_mel = False
         elif audio_type == "mel":
             train_dataset = Dataset_.from_file(f"data/{dataset_name}_{tokenizer}/mel.arrow")
@@ -233,8 +272,11 @@ def load_dataset(
         with open(f"data/{dataset_name}_{tokenizer}/duration.json", "r", encoding="utf-8") as f:
             data_dict = json.load(f)
         durations = data_dict["duration"]
+        
         train_dataset = CustomDataset(
             train_dataset,
+            text_dir=text_dir,
+            folder_dict=folder_dict,
             durations=durations,
             preprocessed_mel=preprocessed_mel,
             mel_spec_module=mel_spec_module,

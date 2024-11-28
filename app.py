@@ -70,7 +70,7 @@ def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
     return load_model(DiT, model_cfg, ckpt_path, vocab_file=vocab_path)
 
 
-F5TTS_ema_model = load_f5tts()
+F5TTS_ema_model = load_f5tts('/mnt/md0/tts/tuna/E2-F5-TTS/ckpts/F5TTS_Base/model_50000.pt')
 E2TTS_ema_model = load_e2tts() if USING_SPACES else None
 custom_ema_model, pre_custom_path = None, ""
 
@@ -826,7 +826,7 @@ If you're having issues, try converting your reference audio to WAV or MP3, clip
 @click.option(
     "--share",
     "-s",
-    default=False,
+    default=True,
     is_flag=True,
     help="Share the app via Gradio share link",
 )
