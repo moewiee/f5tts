@@ -305,18 +305,19 @@ with gr.Blocks() as app_tts:
     
     with gr.Row():
         with gr.Column():
-            gen_text_input = gr.Textbox(label="Input Text To Generate", lines=10)
+            gen_text_input = gr.Textbox(label="Input Text To Generate", lines=6)
+            speed_slider = gr.Slider(
+                label="Speed",
+                minimum=0.3,
+                maximum=2.0,
+                value=speed,
+                step=0.1,
+                info="Speaking rate scaler, 1.0 is normal speed.",
+            )
 
         with gr.Column():
             ref_audio_input = gr.Audio(label="Reference Audio", type="filepath")
-            speed_slider = gr.Slider(
-            label="Speed",
-            minimum=0.3,
-            maximum=2.0,
-            value=speed,
-            step=0.1,
-            info="Adjust the speed of the audio.",
-            )
+            
     speed_slider.change(update_speed, inputs=speed_slider)
     generate_btn = gr.Button("Generate Audio", variant="primary")
     

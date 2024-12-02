@@ -22,3 +22,5 @@ RUN git clone https://github.com/moewiee/f5tts.git \
 ENV SHELL=/bin/bash
 
 WORKDIR /workspace/f5tts
+
+# docker run -it --gpus all -v $(pwd)/checkpoints:/workspace/f5tts/checkpoints f5tts /bin/bash
