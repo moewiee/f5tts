@@ -603,6 +603,8 @@ def load_checkpoint(model, ckpt_path, device, use_ema=True):
     else:
         checkpoint = torch.load(ckpt_path, weights_only=True)
 
+    print("Pretrained checkpoint step:", checkpoint["step"])
+
     if use_ema:
         if ckpt_type == "safetensors":
             checkpoint = {"ema_model_state_dict": checkpoint}

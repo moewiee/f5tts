@@ -89,7 +89,9 @@ class Trainer:
         elif self.logger == "tensorboard":
             from torch.utils.tensorboard import SummaryWriter
 
-            self.writer = SummaryWriter(log_dir=f"runs/{wandb_run_name}")
+            # Only create writer on main process
+            if self.is_main:
+                self.writer = SummaryWriter(log_dir=f"runs/{wandb_run_name}")
 
         self.model = model
 

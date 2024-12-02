@@ -91,7 +91,7 @@ F5TTS_model_cfg = dict(
 )
 
 v1_model = load_model("F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, -1)
-pretrain_model = load_model("F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, 0)
+v0_model = load_model("F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, 0)
 
 def split_text_into_batches(text, max_chars=200, split_words=SPLIT_WORDS):
     if len(text.encode('utf-8')) <= max_chars:
@@ -193,7 +193,7 @@ def infer_batch(ref_audio, ref_text, gen_text_batches, exp_name, progress=gr.Pro
     if exp_name == "v1":
         ema_model = v1_model
     elif exp_name == "v0":
-        ema_model = pretrained_model
+        ema_model = v0_model
 
     audio, sr = ref_audio
     if audio.shape[0] > 1:

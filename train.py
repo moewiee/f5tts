@@ -5,7 +5,7 @@ from model.dataset import load_dataset
 import shutil
 from cached_path import cached_path
 import os
-
+import uuid
 
 
 # -------------------------- Dataset Settings --------------------------- #
@@ -20,7 +20,7 @@ dataset_name = "Emilia_ZH_EN"
 
 # -------------------------- Training Settings -------------------------- #
 
-finetune=True
+finetune = True
 exp_name = "F5TTS_Base"  # F5TTS_Base | E2TTS_Base
 
 learning_rate = 7.5e-5
@@ -71,8 +71,9 @@ def main():
         vocab_char_map=vocab_char_map,
     )
 
-    checkpoint_path = f"ckpts/{exp_name}"
-
+    checkpoint_path = f"ckpts/{exp_name}_{str(uuid.uuid4())[:8]}"
+    # For some weird reason, will OOM if checkpoint is not safetensors
+    assert ckpt_path.endswith(".safetensors"), "Consider using safetensors for checkpoint to avoid OOM."
     model = load_checkpoint(model, ckpt_path, 'cpu', use_ema=True)
 
     trainer = Trainer(
