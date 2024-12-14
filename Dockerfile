@@ -23,4 +23,14 @@ ENV SHELL=/bin/bash
 
 WORKDIR /workspace/f5tts
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    mecab \
+    libmecab-dev \
+    mecab-ipadic-utf8 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install the mecab-python3 package for Python
+RUN pip install mecab-python3
+
 # docker run -it --gpus all -v $(pwd)/checkpoints:/workspace/f5tts/checkpoints f5tts /bin/bash

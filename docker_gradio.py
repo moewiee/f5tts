@@ -18,10 +18,43 @@ from transformers import pipeline
 import soundfile as sf
 
 import argparse
-
+import MeCab
 parser = argparse.ArgumentParser()
 parser.add_argument("ckpt_path", type=str)
 args = parser.parse_args()
+
+# Specify the path to the IPAdic dictionary
+dic_path = '/var/lib/mecab/dic/ipadic-utf8/'  # Replace this with the actual path you found
+
+# Create a MeCab tagger object with the specified dictionary
+tagger = MeCab.Tagger(f'-r /etc/mecabrc -d {dic_path} -Ochasen')
+
+def japanese_to_katakana(text):
+    # Parse the text
+    node = tagger.parseToNode(text)
+    
+    # Collect katakana outputs, keeping Latin characters as they are
+    output = []
+    
+    while node:
+        # Extract features and split into parts
+        features = node.feature.split(',')
+        
+        if len(features) > 7:
+            if features[1] != "記号":
+                reading = features[7]
+                if reading.isascii():  # Check if it's ASCII
+                    output.append(node.surface)  # Append the original Latin characters
+                else:
+                    output.append(reading)  # Append Katakana reading
+            else:
+                output.append(node.surface)  # Include symbols directly
+        else:
+            output.append(node.surface)  # Fallback to the original text if no reading is found
+        
+        node = node.next
+
+    return ''.join(output)
 
 
 SPLIT_WORDS = [
@@ -203,7 +236,10 @@ def infer_batch(ref_audio, ref_text, gen_text_batches, progress=gr.Progress()):
     generated_waves = []
     spectrograms = []
 
+    ref_text = japanese_to_katakana(ref_text)
+
     for i, gen_text in enumerate(progress.tqdm(gen_text_batches)):
+        gen_text = japanese_to_katakana(gen_text)
         # Prepare the text
         if len(ref_text[-1].encode('utf-8')) == 1:
             ref_text = ref_text + " "
