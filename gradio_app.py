@@ -115,9 +115,6 @@ E2TTS_model_cfg = dict(dim=1024, depth=24, heads=16, ff_mult=4)
 F5TTS_ema_model = load_model(
     "F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, -1
 )
-# E2TTS_ema_model = load_model(
-#     "E2-TTS", "E2TTS_Base", UNetT, E2TTS_model_cfg, 1200000
-# )
 E2TTS_ema_model = load_model(
     "F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, 0
 )

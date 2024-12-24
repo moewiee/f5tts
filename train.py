@@ -14,9 +14,9 @@ target_sample_rate = 24000
 n_mel_channels = 100
 hop_length = 256
 
-tokenizer = "pinyin"  # 'pinyin', 'char', or 'custom'
+tokenizer = "char"  # 'pinyin', 'char', or 'custom'
 tokenizer_path = None  # if tokenizer = 'custom', define the path to the tokenizer you want to use (should be vocab.txt)
-dataset_name = "Emilia_ZH_EN"
+dataset_name = "japanese_dataset"
 
 # -------------------------- Training Settings -------------------------- #
 
@@ -41,7 +41,9 @@ if exp_name == "F5TTS_Base":
     wandb_resume_id = None
     model_cls = DiT
     model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
-    ckpt_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))
+    # ckpt_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Base/model_1200000.safetensors"))
+    # ckpt_path = "model_500k_jp.safetensors"
+    ckpt_path = None
 elif exp_name == "E2TTS_Base":
     wandb_resume_id = None
     model_cls = UNetT
@@ -72,9 +74,10 @@ def main():
     )
 
     checkpoint_path = f"ckpts/{exp_name}_{str(uuid.uuid4())[:8]}"
-    # For some weird reason, will OOM if checkpoint is not safetensors
-    assert ckpt_path.endswith(".safetensors"), "Consider using safetensors for checkpoint to avoid OOM."
-    model = load_checkpoint(model, ckpt_path, 'cpu', use_ema=True)
+    if ckpt_path is not None:
+        # For some weird reason, will OOM if checkpoint is not safetensors
+        assert ckpt_path.endswith(".safetensors"), "Consider using safetensors for checkpoint to avoid OOM."
+        model = load_checkpoint(model, ckpt_path, 'cpu', use_ema=True)
 
     trainer = Trainer(
         model,
@@ -94,7 +97,7 @@ def main():
         wandb_resume_id=wandb_resume_id,
         last_per_steps=last_per_steps,
     )
-    train_dataset = load_dataset('emilia_s3_english_reduced', tokenizer, mel_spec_kwargs=mel_spec_kwargs)
+    train_dataset = load_dataset('japanese_dataset', tokenizer, mel_spec_kwargs=mel_spec_kwargs)
     trainer.train(
         train_dataset,
         num_workers=16,
