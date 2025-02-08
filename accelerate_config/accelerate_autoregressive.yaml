@@ -3,7 +3,7 @@ deepspeed_config:
   deepspeed_config_file: accelerate_config/deepspeed_autoregressive.json
   zero3_init_flag: false
 distributed_type: MULTI_GPU
-downcast_bf16: 'yes'
+downcast_bf16: 'no'
 machine_rank: 0
 main_training_function: main
 num_machines: 1
